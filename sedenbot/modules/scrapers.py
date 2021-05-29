@@ -9,6 +9,7 @@
 
 from mimetypes import guess_type
 from os import path, remove
+from random import choice
 from re import findall, sub
 from time import sleep
 from traceback import format_exc
@@ -28,6 +29,7 @@ from sedenecem.core import (
     extract_args,
     get_translation,
     get_webdriver,
+    google_domains,
     reply_doc,
     reply_voice,
     sedenify,
@@ -56,12 +58,12 @@ def carbon(message):
         edit(message, f'`{get_translation("wrongCommand")}`')
         return
     edit(message, f'`{get_translation("processing")}`')
-    textx = message.reply_to_message
+    reply = message.reply_to_message
     pcode = message.text
     if pcode[8:]:
         pcode = str(pcode[8:])
-    elif textx:
-        pcode = str(textx.message)
+    elif reply:
+        pcode = str(reply.message)
     code = quote_plus(pcode)
     global CARBONLANG
     CARBON = f'https://carbon.now.sh/?l={CARBONLANG}&code={code}'
@@ -83,12 +85,12 @@ def carbon(message):
     file = './carbon.png'
     edit(message, f'`{get_translation("carbonUpload")}`')
     reply_doc(
-        message,
+        reply if reply else message,
         file,
         caption=get_translation('carbonResult'),
-        delete_orig=True,
         delete_after_send=True,
     )
+    message.delete()
     driver.quit()
 
 
@@ -111,9 +113,7 @@ def img(message):
         return
     edit(message, f'`{get_translation("processing")}`')
 
-    url = (
-        f'https://www.google.com/search?tbm=isch&q={query}&gbv=2&sa=X&biw=1920&bih=1080'
-    )
+    url = f'https://{choice(google_domains)}/search?tbm=isch&q={query}&gbv=2&sa=X&biw=1920&bih=1080'
     driver = get_webdriver()
     driver.get(url)
     count = 1
@@ -208,11 +208,18 @@ def do_gsearch(query, page):
         return link
 
     def get_result(res):
-        link = res.findAll('a', {'class': ['fuLhoc', 'ZWRArf']})[0]
-        href = f"https://google.com{link_replacer(link['href'])}"
-        title = link.findAll('span', {'class': ['CVA68e', 'qXLe6d']})[0].text
+        link = res.findAll('a')
+        for a in link:
+            if a.find('h3', {'class': ['zBAuLc']}):
+                link = a
+                break
+        href = f"https://{choice(google_domains)}{link_replacer(link['href'])}"
+        title = link.find('h3', {'class': ['zBAuLc']}).text
         title = replacer(title)
-        desc = res.findAll('span', {'class': ['qXLe6d', 'FrIlee']})[-1].text
+        desc = res.contents[-1].findAll(
+            'div', {'class': ['BNeawe', 's3v9rd', 'AP7Wnd']}
+        )
+        desc = [d.text for d in desc if len(d.text)][0]
         desc = replacer(desc)
         if len(desc.strip()) < 1:
             desc = get_translation('googleDesc')
@@ -220,25 +227,38 @@ def do_gsearch(query, page):
 
     query = parse_key(query)
     page = find_page(page)
+    temp = f'/search?q={query}&gbv=1&sei=o9ybYJmOFojssAfep7rADQ&start={find_page(page)}'
+
     req = get(
-        f'https://www.google.com/search?q={query}&gbv=1&sei=2oR3X4nhGY611fAP_5-EkAw&start={find_page(page)}',
+        f'https://{choice(google_domains)}{temp}',
         headers={
-            'User-Agent': 'Mozilla/5.0 (compatible; Konqueror/2.2-12; Linux)',
+            'User-Agent': 'User-Agent: Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0',
             'Content-Type': 'text/html',
         },
     )
+    retries = 0
+    while req.status_code != 200 and retries < 10:
+        retries += 1
+        req = get(
+            f'https://{choice(google_domains)}{temp}',
+            headers={
+                'User-Agent': 'User-Agent: Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0',
+                'Content-Type': 'text/html',
+            },
+        )
+
     soup = BeautifulSoup(req.text, 'html.parser')
-    res1 = soup.findAll('div', {'class': ['ezO2md']})
+    res1 = soup.findAll('div', {'class': ['ZINbbc', 'xpd', 'O9g5cc', 'uUPGi']})
 
     def is_right_class(res):
-        ret = res.find('span', {'class': ['qXLe6d', 'dXDvrc']})
+        ret = res.find('h3', {'class': ['zBAuLc']})
 
         if not ret:
             return False
 
         ret = ret.parent
 
-        return ret.name == 'a' and 'fuLhoc' in ret['class']
+        return ret.name == 'a'
 
     res1 = [res for res in res1 if is_right_class(res)]
 
@@ -318,12 +338,11 @@ def do_ddsearch(res1):
 
 @sedenify(pattern='^.ud')
 def urbandictionary(message):
-    match = extract_args(message)
-    if len(match) < 1:
+    query = extract_args(message)
+    if len(query) < 1:
         edit(message, f'`{get_translation("wrongCommand")}`')
         return
     edit(message, f'`{get_translation("processing")}`')
-    query = extract_args(message)
     try:
         define(query)
     except HTTPError:
@@ -366,50 +385,53 @@ def urbandictionary(message):
         edit(message, get_translation('udNoResult', ['**', query]))
 
 
-@sedenify(pattern=r'^.wiki')
+@sedenify(pattern='^.wiki')
 def wiki(message):
-    match = extract_args(message)
-    if len(match) < 1:
+    args = extract_args(message)
+    if len(args) < 1:
         edit(message, f'`{get_translation("wrongCommand")}`')
         return
     set_lang(SEDEN_LANG)
-    match = extract_args(message)
     try:
-        summary(match)
+        summary(args)
     except DisambiguationError as error:
         edit(message, get_translation('wikiError', [error]))
         return
     except PageError as pageerror:
         edit(message, get_translation('wikiError2', [pageerror]))
         return
-    result = summary(match)
+    result = summary(args)
     if len(result) >= 4096:
         file = open('wiki.txt', 'w+')
         file.write(result)
         file.close()
-        reply_doc(message, 'wiki.txt', caption=f'`{get_translation("outputTooLarge")}`')
-        if path.exists('wiki.txt'):
-            remove('wiki.txt')
-        return
-    edit(message, get_translation('sedenQuery', ['**', '`', match, result]))
+        reply_doc(
+            message,
+            'wiki.txt',
+            caption=f'`{get_translation("outputTooLarge")}`',
+            delete_after_send=True,
+        )
+    edit(message, get_translation('sedenQuery', ['**', '`', args, result]))
 
-    send_log(get_translation('wikiLog', ['`', match]))
+    send_log(get_translation('wikiLog', ['`', args]))
 
 
-@sedenify(pattern=r'^.tts')
-def tts(message):
-    textx = message.reply_to_message
-    ttsx = extract_args(message)
-    if ttsx:
+@sedenify(pattern='^.tts')
+def text_to_speech(message):
+    reply = message.reply_to_message
+    args = extract_args(message)
+    if args:
         pass
-    elif textx:
-        ttsx = textx.text
+    elif reply:
+        if not reply.text:
+            return edit(message, f'`{get_translation("ttsUsage")}`')
+        args = reply.text
     else:
         edit(message, f'`{get_translation("ttsUsage")}`')
         return
 
     try:
-        gTTS(ttsx, lang=TTS_LANG)
+        gTTS(args, lang=TTS_LANG)
     except AssertionError:
         edit(message, f'`{get_translation("ttsBlank")}`')
         return
@@ -417,45 +439,47 @@ def tts(message):
         edit(message, f'`{get_translation("ttsNoSupport")}`')
         return
     except RuntimeError:
-        edit(message, f'{get_translation("ttsError")}')
+        edit(message, f'`{get_translation("ttsError")}`')
         return
-    tts = gTTS(ttsx, lang=TTS_LANG)
+    tts = gTTS(args, lang=TTS_LANG)
     tts.save('h.mp3')
     with open('h.mp3', 'rb') as audio:
         linelist = list(audio)
         linecount = len(linelist)
     if linecount == 1:
-        tts = gTTS(ttsx, lang=TTS_LANG)
+        tts = gTTS(args, lang=TTS_LANG)
         tts.save('h.mp3')
     with open('h.mp3', 'r'):
-        reply_voice(message, 'h.mp3', delete_orig=True)
-        remove('h.mp3')
+        reply_voice(reply if reply else message, 'h.mp3', delete_file=True)
 
+    message.delete()
     send_log(get_translation('ttsLog'))
 
 
-@sedenify(pattern=r'^.trt')
-def trt(message):
+@sedenify(pattern='^.trt')
+def translate(message):
     translator = Translator()
-    textx = message.reply_to_message
-    trt = extract_args(message)
-    if trt:
+    reply = message.reply_to_message
+    args = extract_args(message)
+    if args:
         pass
-    elif textx:
-        trt = textx.text
+    elif reply:
+        if not reply.text:
+            return edit(message, f'`{get_translation("trtUsage")}`')
+        args = reply.text
     else:
-        edit(message, f'{get_translation("trtUsage")}')
+        edit(message, f'`{get_translation("trtUsage")}`')
         return
 
     try:
-        reply_text = translator.translate(deEmojify(trt), dest=TRT_LANG)
+        reply_text = translator.translate(deEmojify(args), dest=TRT_LANG)
     except ValueError:
-        edit(message, f'{get_translation("trtError")}')
+        edit(message, f'`{get_translation("trtError")}`')
         return
 
-    source_lan = LANGUAGES[f'{reply_text.src.lower()}']
-    transl_lan = LANGUAGES[f'{reply_text.dest.lower()}']
-    reply_text = '{}\n\n{}'.format(
+    source_lan = LANGUAGES[reply_text.src.lower()]
+    transl_lan = LANGUAGES[reply_text.dest.lower()]
+    reply_text = '{}\n{}'.format(
         get_translation(
             'transHeader', ['**', '`', source_lan.title(), transl_lan.title()]
         ),
@@ -547,5 +571,4 @@ HELP.update({'goolag': get_translation('googleInfo')})
 HELP.update({'duckduckgo': get_translation('ddgoInfo')})
 HELP.update({'wiki': get_translation('wikiInfo')})
 HELP.update({'ud': get_translation('udInfo')})
-HELP.update({'tts': get_translation('ttsInfo')})
-HELP.update({'trt': get_translation('trtInfo')})
+HELP.update({'translator': get_translation('translatorInfo')})

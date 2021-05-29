@@ -8,19 +8,22 @@
 # All rights reserved. See COPYING, AUTHORS.
 #
 
+from io import BytesIO
 from os import remove
 
+from PIL import Image
+from requests import get
 from sedenbot import HELP
 from sedenecem.core import (
     edit,
     extract_args,
+    get_download_dir,
     get_translation,
     reply_audio,
-    reply_doc,
+    reply_video,
     sedenify,
 )
 from youtube_dl import YoutubeDL
-from youtube_dl.utils import DownloadError
 
 
 @sedenify(pattern='^.(youtube|yt)dl')
@@ -34,54 +37,111 @@ def youtubedl(message):
     util = args[0].lower()
     url = args[1]
 
-    try:
-        video_info = YoutubeDL().extract_info(url, False)
-    except DownloadError as e:
-        return edit(message, get_translation('banError', ['`', '**', e]))
-
-    title = video_info.get('title')
-    uploader = video_info.get('uploader')
-
     if util == 'mp4':
-        edit(message, get_translation('downloadYTVideo', ['**', title, '`']))
         ydl_opts = {
-            'outtmpl': f'{title}.%(ext)s',
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'outtmpl': f'%(id)s.%(ext)s',
+            'format': 'bestvideo[ext=mp4][height<=?1080]+bestaudio[ext=m4a]/best',
+            'addmetadata': True,
+            'prefer_ffmpeg': True,
+            'geo_bypass': True,
+            'nocheckcertificate': True,
+            'postprocessors': [
+                {'key': 'FFmpegMetadata'},
+                {'key': 'FFmpegVideoConvertor', 'preferedformat': 'mp4'},
+            ],
+            'quiet': True,
+            'logtostderr': False,
         }
+        thumb_path = None
         with YoutubeDL(ydl_opts) as ydl:
+            try:
+                video_info = ydl.extract_info(url, False)
+                title = video_info['title']
+                uploader = video_info['uploader']
+                duration = int(video_info['duration'])
+            except KeyError:
+                uploader = get_translation('notFound')
+                duration = None
+            except BaseException as e:
+                return edit(message, get_translation('banError', ['`', '**', e]))
+
+            edit(message, get_translation('downloadYTVideo', ['**', title, '`']))
+
+            try:
+                temp = BytesIO()
+                with get(video_info['thumbnail']) as req:
+                    temp.name = 'file.webp'
+                    temp.write(req.content)
+                    temp.seek(0)
+                im = Image.open(temp)
+                imc = im.convert('RGB')
+                imc.save(thumb_path := f'{get_download_dir()}/{video_info["id"]}.jpg')
+            except BaseException:
+                thumb_path = None
+
             ydl.download([url])
-        edit(message, f'{get_translation("uploadMedia")}')
-        reply_doc(
+
+        edit(message, f'`{get_translation("uploadMedia")}`')
+        reply_video(
             message,
-            f'{title}.mp4',
-            caption=f"{get_translation('title', ['**' , ':'])} {title}`\n`{get_translation('uploader',['**',':'])} {uploader}",
-            delete_after_send=True,
+            f'{video_info["id"]}.mp4',
+            thumb=thumb_path,
+            caption=f"**{get_translation('videoTitle')}** `{title}`\n**{get_translation('videoUploader')}** `{uploader}`",
+            duration=duration,
             delete_orig=True,
+            delete_file=True,
         )
+        try:
+            remove(thumb_path)
+        except BaseException:
+            pass
 
     elif util == 'mp3':
-        edit(message, get_translation('downloadYTAudio', ['**', title, '`']))
         ydl_opts = {
-            'outtmpl': f'{title}.%(ext)s',
+            'outtmpl': f'%(title)s.%(ext)s',
             'format': 'bestaudio/best',
+            'addmetadata': True,
+            'writethumbnail': True,
+            'prefer_ffmpeg': True,
+            "extractaudio": True,
+            'geo_bypass': True,
+            'nocheckcertificate': True,
             'postprocessors': [
                 {
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
                     'preferredquality': '320',
-                }
+                },
+                {'key': 'EmbedThumbnail'},
+                {'key': 'FFmpegMetadata'},
             ],
+            'quiet': True,
+            'logtostderr': False,
         }
         with YoutubeDL(ydl_opts) as ydl:
+            try:
+                video_info = ydl.extract_info(url, False)
+                title = video_info['title']
+                uploader = video_info['uploader']
+                duration = int(video_info['duration'])
+            except KeyError:
+                uploader = get_translation('notFound')
+                duration = None
+            except BaseException as e:
+                return edit(message, get_translation('banError', ['`', '**', e]))
+
+            edit(message, get_translation('downloadYTAudio', ['**', title, '`']))
+
             ydl.download([url])
         edit(message, f'`{get_translation("uploadMedia")}`')
         reply_audio(
             message,
             f'{title}.mp3',
-            caption=f"{get_translation('uploader',['**',':'])} {uploader}",
+            caption=f"**{get_translation('videoUploader')}** `{uploader}`",
+            duration=duration,
             delete_orig=True,
+            delete_file=True,
         )
-        remove(f'{title}.mp3')
 
 
 HELP.update({'youtubedl': get_translation('youtubedlInfo')})

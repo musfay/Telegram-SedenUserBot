@@ -87,7 +87,7 @@ def set_local_env(key: str, value: str):
 def unset_local_env(key: str):
     if key in environ:
         del environ[key]
-    return unset_key('config.env', key)
+    return unset_key(PurePath('config.env'), key)
 
 
 def set_logger():
@@ -160,9 +160,6 @@ DEEZER_TOKEN = environ.get('DEEZER_TOKEN', None)
 
 # SQL Database URL
 DATABASE_URL = environ.get('DATABASE_URL', None)
-
-# Download directory
-DOWNLOAD_DIRECTORY = environ.get('DOWNLOAD_DIRECTORY', './downloads')
 
 # SedenBot Session
 SESSION = environ.get('SESSION', 'sedenuserbot')
@@ -274,7 +271,7 @@ app = PyroClient(
     SESSION,
     api_id=API_ID,
     api_hash=API_HASH,
-    app_version=f'Seden UserBot',
+    app_version='Seden UserBot',
     device_model='DerUntergang',
     system_version=f'v{BOT_VERSION}',
     lang_code='tr',
