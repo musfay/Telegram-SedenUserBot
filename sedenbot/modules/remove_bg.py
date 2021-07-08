@@ -9,6 +9,7 @@
 
 from os import path, remove
 
+from PIL import Image
 from removebg import RemoveBg
 from sedenbot import HELP, RBG_APIKEY
 from sedenecem.core import (
@@ -31,8 +32,14 @@ def rbg(message):
         )
     reply = message.reply_to_message
 
-    if reply and (
-        reply.photo or (reply.document and 'image' in reply.document.mime_type)
+    if (
+        reply
+        and reply.media
+        and (
+            reply.photo
+            or (reply.sticker and not reply.sticker.is_animated)
+            or (reply.document and 'image' in reply.document.mime_type)
+        )
     ):
         edit(message, f'`{get_translation("processing")}`')
     else:
@@ -45,6 +52,12 @@ def rbg(message):
         remove(IMG_PATH)
     download_media_wc(reply, IMG_PATH)
     edit(message, f'`{get_translation("rbgProcessing")}`')
+
+    if reply.sticker and not reply.sticker.is_animated:
+        image = Image.open(IMG_PATH)
+        IMG_PATH = f'{get_download_dir()}/image.png'
+        image.save(IMG_PATH)
+
     try:
         remove_bg = RemoveBg(RBG_APIKEY, get_translation('rbgLog'))
         remove_bg.remove_background_from_img_file(IMG_PATH)

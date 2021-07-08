@@ -7,9 +7,11 @@
 # All rights reserved. See COPYING, AUTHORS.
 #
 
-from os import remove
+from os import remove, path
+from subprocess import getstatusoutput
 
 from .misc import MARKDOWN_FIX_CHAR, download_media_wc
+from sedenbot import LOG_VERBOSE
 
 
 def reply_img(
@@ -64,16 +66,38 @@ def reply_video(
     duration='',
     thumb=None,
     fix_markdown=False,
+    progress=None,
     delete_orig=False,
     delete_file=False,
     parse='md',
 ):
     try:
+        if not thumb:
+            thumb = 'downloads/thumb.png'
+            if path.exists(thumb):
+                remove(thumb)
+            out = getstatusoutput(f'ffmpeg -i {video} -ss 00:00:01.000 -vframes 1 {thumb}')
+            if LOG_VERBOSE:
+                print(out)
+            if out[0] != 0:
+                thumb = None
+        
+        if not duration:
+            out = getstatusoutput(f'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 {video}')
+            if LOG_VERBOSE:
+                print(out)
+            if out[0] == 0:
+                duration = int(float(out[1]))
+
         if len(caption) > 0 and fix_markdown:
             caption += MARKDOWN_FIX_CHAR
         if not duration:
             message.reply_video(
-                video, caption=caption.strip(), parse_mode=parse, thumb=thumb
+                video,
+                caption=caption.strip(),
+                parse_mode=parse,
+                thumb=thumb,
+                progress=progress,
             )
         else:
             message.reply_video(
@@ -82,12 +106,14 @@ def reply_video(
                 duration=int(duration),
                 parse_mode=parse,
                 thumb=thumb,
+                progress=progress,
             )
         if delete_orig:
             message.delete()
         if delete_file:
             remove(video)
-    except BaseException:
+    except BaseException as e:
+        raise e
         pass
 
 

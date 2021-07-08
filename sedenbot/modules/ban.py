@@ -30,7 +30,6 @@ from sedenecem.core import (
     sedenify,
     send_log,
 )
-from sedenecem.sql import mute_sql as sql
 
 
 @sedenify(pattern='^.ban', compat=False, private=False, admin=True)
@@ -180,6 +179,12 @@ def kick_user(client, message):
 
 @sedenify(pattern='^.mute', compat=False, private=False, admin=True)
 def mute_user(client, message):
+    try:
+        from sedenecem.sql import mute_sql as sql
+    except BaseException:
+        edit(message,f'`{get_translation("nonSqlMode")}`')
+        return
+
     args = extract_args(message)
     reply = message.reply_to_message
     edit(message, f'`{get_translation("muteProcess")}`')
@@ -232,6 +237,12 @@ def mute_user(client, message):
 
 @sedenify(pattern='^.unmute', compat=False, private=False, admin=True)
 def unmute_user(client, message):
+    try:
+        from sedenecem.sql import mute_sql as sql
+    except BaseException:
+        edit(message,f'`{get_translation("nonSqlMode")}`')
+        return
+
     args = extract_args(message)
     reply = message.reply_to_message
     edit(message, f'`{get_translation("unmuteProcess")}`')
@@ -393,24 +404,28 @@ def pin_message(client, message):
         return
 
 
-@sedenify(pattern='^.unpin$', compat=False, private=False, admin=True)
+@sedenify(pattern='^.unpin', compat=False, private=False, admin=True)
 def unpin_message(client, message):
+    args = extract_args(message)
     reply = message.reply_to_message
-    chat_id = message.chat.id
+    chat = message.chat
     if reply:
         try:
-            client.unpin_chat_message(chat_id, reply.message_id)
+            reply.unpin()
+            message.delete()
+        except Exception as e:
+            edit(message, get_translation('banError', ['`', '**', e]))
+            return
+    elif 'all' in args:
+        try:
+            client.unpin_all_chat_messages(chat.id)
+            message.delete()
         except Exception as e:
             edit(message, get_translation('banError', ['`', '**', e]))
             return
     else:
-        try:
-            client.unpin_all_chat_messages(chat_id)
-        except Exception as e:
-            edit(message, get_translation('banError', ['`', '**', e]))
-            return
+        edit(message, f'`{get_translation("wrongCommand")}`')
 
-    message.delete()
 
 
 @sedenify(pattern='^.(admins|bots|user(s|sdel))$', compat=False, private=False)
@@ -571,6 +586,11 @@ def set_group_photo(client, message):
 
 @sedenify(incoming=True, outgoing=False, compat=False)
 def mute_check(client, message):
+    try:
+        from sedenecem.sql import mute_sql as sql
+    except BaseException:
+        return
+
     muted = sql.is_muted(message.chat.id, message.from_user.id)
 
     if muted:

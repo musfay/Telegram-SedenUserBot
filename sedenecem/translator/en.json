@@ -1,6 +1,6 @@
 {
     "added": "added",
-    "adminInfo": ".promote <username/reply> <custom rank (optional)>\nUsage: Provides admin rights to the person in the chat.\n\n.demote <username/reply>\nUsage: Revokes the person's admin permissions in the chat.\n\n.ban <username/reply>\nUsage: Bans the person off your chat.\n\n.unban <username/reply>\nUsage: Removes the ban from the person in the chat.\n\n.mute <username/reply>\nUsage: Mutes the person in the chat.\n\n.unmute <username/reply>\nRemoves the person from the muted list.\n\n.kick <username/reply>\nUsage: Kicks user.\n\n.pin <reply>\nUsage: Pins the replied message.\n\n.unpin\nUsage: Unpin the pinned message.\n\n.admins\nUsage: Retrieves a list of admins in the chat.\n\n.users\nUsage: Retrieves all users in the chat.\n\n.usersdel\nUsage: Retrieves all deleted users in the chat.\n\n.bots\nUsage: Retrieves a list of bots in the chat.\n\n.zombies\nUsage: Finds deleted account(s) that are in a group. Use '.zombies clean' command to remove deleted account(s) from the group.\n\n.setgpic\nUsage: Changes group picture.",
+    "adminInfo": ".promote <username/reply> <custom rank (optional)>\nUsage: Provides admin rights to the person in the chat.\n\n.demote <username/reply>\nUsage: Revokes the person's admin permissions in the chat.\n\n.ban <username/reply>\nUsage: Bans the person off your chat.\n\n.unban <username/reply>\nUsage: Removes the ban from the person in the chat.\n\n.mute <username/reply>\nUsage: Mutes the person in the chat.\n\n.unmute <username/reply>\nRemoves the person from the muted list.\n\n.kick <username/reply>\nUsage: Kicks user.\n\n.pin <reply>\nUsage: Pins the replied message.\n\n.unpin <reply> & .unpin all\nUsage: Unpin the pinned message(s).\n\n.admins\nUsage: Retrieves a list of admins in the chat.\n\n.users\nUsage: Retrieves all users in the chat.\n\n.usersdel\nUsage: Retrieves all deleted users in the chat.\n\n.bots\nUsage: Retrieves a list of bots in the chat.\n\n.zombies\nUsage: Finds deleted account(s) that are in a group. Use '.zombies clean' command to remove deleted account(s) from the group.\n\n.setgpic\nUsage: Changes group picture.",
     "adminUsage": "I'm not admin!",
     "adminlist": "%1Admins in%1 %2%3%2%1:%1",
     "afkEnd": "I'm no longer AFK.",
@@ -530,7 +530,7 @@
     "statusWeek": "Within the last week",
     "stickerAdded": "%1Sticker kanged successfully!%1\nPack can be found [here](https://t.me/addstickers/%2)",
     "stickerError": "I can't kang that",
-    "stickerInfo": ".kang\nUsage: Reply .kang to a sticker or an image to kang it to your sticker pack.\n\n.kang [number]\nUsage: Kang's the sticker/image to the specified pack but uses \ud83e\udd24 as emoji.\n\n.getsticker\nUsage: Sends the replied sticker in file format.\n\n.packinfo\nUsage: Gets info about the sticker pack.",
+    "stickerInfo": ".kang [Optional: <Pack Number> <Emoji>]\nUsage: Reply .kang to a sticker or an image to kang it to your sticker pack. Default emoji is \ud83e\udd24\n\n.getsticker\nUsage: Sends the replied sticker in file format.\n\n.packinfo\nUsage: Gets info about the sticker pack.",
     "stickerPackFull": "Pack %1 is full.",
     "stickerUsage": "Give me something..",
     "strUsage": "GiiiiiiiB sooooooomeeeeeee teeeeeeext!",

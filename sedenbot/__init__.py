@@ -27,7 +27,7 @@ from typing import Any, Dict
 
 import sedenecem.translator as _tr
 from dotenv import load_dotenv, set_key, unset_key
-from pyrogram import Client, filters
+from pyrogram import Client, filters, idle
 from pyrogram.handlers import MessageHandler
 from requests import get
 
@@ -61,9 +61,9 @@ HELP: Dict[str, str] = {}
 BRAIN = []
 BLACKLIST = []
 CONVERSATION: Dict[Any, Any] = {}
-PM_COUNT: Dict[Any, int] = {}
-PM_LAST_MSG: Dict[Any, Any] = {}
 TEMP_SETTINGS: Dict[Any, Any] = {}
+TEMP_SETTINGS['PM_COUNT'] = {}
+TEMP_SETTINGS['PM_LAST_MSG'] = {}
 
 # Console verbose logging
 LOG_VERBOSE = sb(environ.get('LOG_VERBOSE', 'False'))
@@ -122,7 +122,7 @@ if not API_HASH:
     LOGS.warn(get_translation('apiHashError'))
     quit(1)
 
-BOT_VERSION = '1.4.4 Beta'
+BOT_VERSION = '1.4.5 Beta'
 SUPPORT_GROUP = 'SedenUserBotSupport'
 CHANNEL = 'SedenUserBot'
 
@@ -306,8 +306,6 @@ def __import_modules():
                 LOGS.warn(format_exc())
             LOGS.warn(get_translation('loadedModulesError', [module]))
 
-
-__import_modules()
 
 LOGS.info(get_translation('runningBot', [SUPPORT_GROUP]))
 LOGS.info(get_translation('sedenVersion', [BOT_VERSION]))
